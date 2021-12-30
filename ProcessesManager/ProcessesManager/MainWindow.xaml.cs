@@ -30,8 +30,72 @@ namespace ProcessesManager
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
+    /// 
+    class Schedule
+    {
+        public TimeSpan from;
+        public TimeSpan to;
+        public int duration;
+        public int interupt;
+        public int sum;
+        public Schedule(string entry)
+        {
+            string[] subEntry = entry.Split(' ');
+
+            string timeFrom = subEntry[0].Substring(1);
+            string[] timeFromEntry = timeFrom.Split(':');
+            from = new TimeSpan(Int32.Parse(timeFromEntry[0]), Int32.Parse(timeFromEntry[1]), 0);
+
+            string timeTo = subEntry[1].Substring(1);
+            string[] timeToEntry = timeTo.Split(':');
+            to = new TimeSpan(Int32.Parse(timeToEntry[0]), Int32.Parse(timeToEntry[1]), 0);
+
+            if (!Int32.TryParse(subEntry[2].Substring(1), out duration))
+            {
+                duration = 0;
+            }
+            if (!Int32.TryParse(subEntry[3].Substring(1), out interupt))
+            {
+                duration = 0;
+            }
+            if (!Int32.TryParse(subEntry[4].Substring(1), out sum))
+            {
+                duration = 0;
+            }
+        }
+
+        public void setFrom(string from_string)
+        {
+            string[] timeEntry = from_string.Split(':');
+            from = new TimeSpan(Int32.Parse(timeEntry[0]), Int32.Parse(timeEntry[1]), 0);
+        }
+
+        public void setTo(string to_string)
+        {
+            string[] timeEntry = to_string.Split(':');
+            from = new TimeSpan(Int32.Parse(timeEntry[0]), Int32.Parse(timeEntry[1]), 0);
+        }
+
+        public string ToEntry()
+        {
+            return 'F' + from.ToString(@"hh\:mm") + ' ' + 'T' + to.ToString(@"hh\:mm") + ' ' + 'D' + duration.ToString() + ' ' + 'I' + interupt.ToString() + ' ' + 'S' + sum.ToString();
+        }
+
+    }
+
+
     public partial class MainWindow : Window
     {
+        private string[] defaultSchedule =
+            {
+            "F07:30 T11:30 D60 I20 S150", "F12:30 T5:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
+        };
+        private string[] todaySchedule;
+        private string todayPath;
+        private string oneDrivePath = Environment.GetEnvironmentVariable("OneDriveConsumer") + @"\" + "prjmanager";
+        private int pass_try = 3;
+        private bool isLogin = false;
+        private bool firstLogin = false;
         #region hook key board
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
@@ -132,16 +196,41 @@ namespace ProcessesManager
         public MainWindow()
         {
             InitializeComponent();
+
+            if (!Directory.Exists(oneDrivePath))
+            {
+                Directory.CreateDirectory(oneDrivePath);
+            }
+            DateTime localDate = DateTime.Now;
+            todayPath = oneDrivePath + @"\" + localDate.ToString("dd-MM-yyyy");
+            if (!Directory.Exists(todayPath))
+            {
+                Directory.CreateDirectory(todayPath);
+                Directory.CreateDirectory(todayPath + @"\" + "capture");
+            }
+            if (!File.Exists(todayPath + @"\schedule.txt"))
+            {
+                MakeDefaultScheduleTask();
+                todaySchedule = defaultSchedule;
+            }
+            else
+            {
+                todaySchedule = File.ReadAllLines(todayPath + @"\schedule.txt");
+            }
+            loginTimer();
         }
 
-        private static void AskAgain()
+        private void AskAgain()
         {
+            isLogin = false;
+            this.Show();
+            loginTimer();
             //Thread.Sleep(5000);
-            var loginWindow = new LoginWindow();
-            loginWindow.ShowDialog();
+            //var loginWindow = new LoginWindow();
+            //loginWindow.ShowDialog();
             //var result = loginWindow.DialogResult;
             //Thread.Sleep(2000);
-            loginWindow.Close();
+            //loginWindow.Close();
             /*if (result==true)
             {
                 if(loginWindow.PwTextBox.Text == "123")
@@ -161,21 +250,55 @@ namespace ProcessesManager
         }
 
         static int count = 0;
-        private static void Capture()
+        private void Capture()
         {
             //Thread.Sleep(1000);
             SendKeys.SendWait("{PRTSC}");
             System.Drawing.Image myImage = Clipboard.GetImage();
             //string img = DateTime.Now.ToLongDateString() + imgExtendtion;
-            string img = DateTime.Now.TimeOfDay.ToString() + imgExtendtion;
+            string img = DateTime.Now.TimeOfDay.ToString(@"hh\hmm\mss") + imgExtendtion;
             count++;
-            myImage.Save($"C:\\Users\\Admin\\OneDrive\\thang{count}.jpg");
+            myImage.Save(todayPath + @"\" + "capture" + $@"\{img}");
             //Capture();
         }
+
+
 
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
 
+            if (PassTextBlock.Text == "")
+            {
+                MessageBox.Show("Please enter your password");
+            }
+            else if (PassTextBlock.Text == "hdh")
+            {
+                this.Hide();
+                isLogin = true;
+                if (!firstLogin)
+                {
+                    runInWatch();
+                }
+                firstLogin = true;
+            }
+            else
+            {
+                pass_try--;
+                if (pass_try > 0)
+                {
+                    MessageBox.Show($"Wrong password, {pass_try} tries(try) left.");
+                }
+                else
+                {
+                    MessageBox.Show($"Your computer will shutdown now. Please try again after 10 minutes");
+                }
+
+            } 
+        }
+
+        // main method 
+        public void runInWatch()
+        {
             Thread capTure = new Thread(() =>
             {
                 while (true)
@@ -198,10 +321,10 @@ namespace ProcessesManager
             {
                 while (true)
                 {
+                    Thread.Sleep(10000);
                     ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
                         AskAgain();
                     });
-                    Thread.Sleep(2000);
                 }
             });
 
@@ -213,6 +336,74 @@ namespace ProcessesManager
 
             capTure.IsBackground = true;
             capTure.Start();
+
+            // test schedule.txt change notification
+            Thread CheckScheduleChange = new Thread(() =>
+            {
+                // Create a new FileSystemWatcher and set its properties.
+                FileSystemWatcher watcher = new FileSystemWatcher();
+                watcher.Path = todayPath;
+                /* Watch for changes in LastAccess and LastWrite times, and 
+                   the renaming of files or directories. */
+                watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite
+                   | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+                // Only watch text files.
+                watcher.Filter = "*.txt";
+
+                // Add event handlers.
+                watcher.Changed += new FileSystemEventHandler(OnChanged);
+
+                // Begin watching.
+                watcher.EnableRaisingEvents = true;
+            });
+            CheckScheduleChange.IsBackground = true;
+            CheckScheduleChange.Start();
+        }
+
+        public void loginTimer()
+        {
+            Thread timer = new Thread(() =>
+            {
+                int curr_time = 30000;
+                while (curr_time>0)
+                {
+                    curr_time -= 1000;
+                    this.Dispatcher.Invoke(()=> {
+                        lb_timer.Content = $"You have {curr_time/1000} second left to enter password";
+                    });
+                    
+                    Thread.Sleep(1000);
+                }
+                if (!isLogin)
+                {
+                    MessageBox.Show("bummmmmm... shut down");
+                }
+            });
+            timer.IsBackground = true;
+            timer.Start();
+        }
+        // utility method
+        public async Task MakeDefaultScheduleTask()
+        {
+            await File.WriteAllLinesAsync(todayPath + @"\schedule.txt", defaultSchedule);
+        }
+
+        public async Task updateScheduleTask()
+        {
+            if (todaySchedule.Length > 0)
+            {
+                await File.WriteAllLinesAsync(todayPath + @"\schedule.txt", todaySchedule);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        public void OnChanged(object source, FileSystemEventArgs e)
+        {
+            todaySchedule = File.ReadAllLines(todayPath + @"\schedule.txt");
+            MessageBox.Show("Schedule change");
         }
     }
 }
