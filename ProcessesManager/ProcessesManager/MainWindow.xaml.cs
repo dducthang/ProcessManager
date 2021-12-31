@@ -292,6 +292,7 @@ namespace ProcessesManager
             time_left.Content = $"{TimeLeft.Minutes}-{TimeLeft.Seconds}--{count}";
             if (TimeLeft.Minutes <= 1)
             {
+                LogShutdownTime().Wait();
                 MessageBox.Show("This computer will be shutdowned in 1 min");
                 var psi = new ProcessStartInfo("shutdown", "/s /t 600");
                 psi.CreateNoWindow = true;
@@ -443,14 +444,15 @@ namespace ProcessesManager
         {
             Thread timer = new Thread(() =>
             {
-                int curr_time = 60000*10;
-                while (curr_time>0)
+                int curr_time = 60000 * 10;
+                while (curr_time > 0)
                 {
                     curr_time -= 1000;
-                    this.Dispatcher.Invoke(()=> {
-                        lb_timer.Content = $"You have {curr_time/1000} second left to enter password";
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        lb_timer.Content = $"You have {curr_time / 1000} second left to enter password";
                     });
-                    
+
                     Thread.Sleep(1000);
                 }
                 if (!isLogin)
@@ -465,6 +467,21 @@ namespace ProcessesManager
         public async Task MakeDefaultScheduleTask()
         {
             await File.WriteAllLinesAsync(todayPath + @"\schedule.txt", defaultSchedule);
+        }
+        
+        public async Task LogShutdownTime()
+        {
+            TimeSpan now = DateTime.Now.TimeOfDay;
+            string shutdownTimeStr = $"{now.Hours}:{now.Minutes}:{now.Seconds}";
+            try
+            {
+                await File.WriteAllTextAsync(todayPath+@"\tenmins.txt", shutdownTimeStr);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                MessageBox.Show(e.ToString());
+            }
         }
 
         public async Task updateScheduleTask()
