@@ -3,7 +3,7 @@
 		. không phải pass người lớn: shutdown sau 15s; đăng nhập sai 3 lần -> shutdown
 		. pass người lớn: mở 1 thread check đăng nhập sau mỗi 60p
 	+ trong giờ đc sử dụng: mở form đăng nhập(tích hợp mở 1 thread tắt máy nếu 1 phút ko đăng nhập):
-		. đăng nhập sai 3 lần -> shutdown, ghi thời gian shutdown
+		. đăng nhập sai 3 lần -> shutdown, ghi thời gian shutdown vào file tenmins.txt
 		. đăng nhập đúng -> mở 3 thread cap, check update, check thời gian còn lại
 
 	
