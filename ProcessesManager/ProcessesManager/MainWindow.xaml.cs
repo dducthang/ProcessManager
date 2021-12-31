@@ -40,6 +40,8 @@ namespace ProcessesManager
         public int sum;
         public Schedule(string entry)
         {
+            //"F07:30 T11:30 D60 I20 S150", "F12:30 T5:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
+
             string[] subEntry = entry.Split(' ');
 
             string timeFrom = subEntry[0].Substring(1);
@@ -88,14 +90,22 @@ namespace ProcessesManager
     {
         private string[] defaultSchedule =
             {
-            "F07:30 T11:30 D60 I20 S150", "F12:30 T5:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
+            "F07:30 T11:30 D0060 I0020 S0150", "F12:30 T17:30 D0060 I0020 S0150", "F18:00 T23:30 D0003 I0020 S0150"
         };
         private string[] todaySchedule;
         private string todayPath;
-        private string oneDrivePath = Environment.GetEnvironmentVariable("OneDriveConsumer") + @"\" + "prjmanager";
+        private string oneDrivePath = Environment.GetEnvironmentVariable("OneDriveConsumer") + @"\" + "management";
         private int pass_try = 3;
+        
         private bool isLogin = false;
         private bool firstLogin = false;
+
+        private TimeSpan LoggedInTime = new TimeSpan();
+        private TimeSpan TimeLeft = new TimeSpan();
+        private int stage = 0;
+        private bool isScheduleChanged = false;
+        private List<Schedule> _schedule = new List<Schedule>();
+
         #region hook key board
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
@@ -216,6 +226,11 @@ namespace ProcessesManager
             else
             {
                 todaySchedule = File.ReadAllLines(todayPath + @"\schedule.txt");
+                for (var i = 0; i < todaySchedule.Length; i++)
+                {
+                    Schedule time = new Schedule(todaySchedule[i]);
+                    _schedule.Add(time);
+                }
             }
             loginTimer();
         }
@@ -249,20 +264,43 @@ namespace ProcessesManager
 
         }
 
-        static int count = 0;
         private void Capture()
         {
-            //Thread.Sleep(1000);
             SendKeys.SendWait("{PRTSC}");
             System.Drawing.Image myImage = Clipboard.GetImage();
-            //string img = DateTime.Now.ToLongDateString() + imgExtendtion;
             string img = DateTime.Now.TimeOfDay.ToString(@"hh\hmm\mss") + imgExtendtion;
-            count++;
             myImage.Save(todayPath + @"\" + "capture" + $@"\{img}");
-            //Capture();
         }
+        private int count = 0;
+        private int CheckTimeLeft()
+        {
+           
+            if (isScheduleChanged)
+            {
+                //Nếu file Schedule.txt có sự thay đổi thì cập nhật danh sách _schedule
+                _schedule.Clear();
+                for (var i=0; i<todaySchedule.Length;i++)
+                {
+                    Schedule time = new Schedule(todaySchedule[i]);
+                    _schedule.Add(time);
+                }
+            }
 
-
+            TimeSpan currentTime = DateTime.Now.TimeOfDay;
+            TimeSpan currentDuration = new TimeSpan(0, _schedule[stage].duration, 0);
+            TimeLeft = (LoggedInTime + currentDuration) - currentTime;
+            time_left.Content = $"{TimeLeft.Minutes}-{TimeLeft.Seconds}--{count}";
+            if (TimeLeft.Minutes <= 1)
+            {
+                MessageBox.Show("This computer will be shutdowned in 1 min");
+                var psi = new ProcessStartInfo("shutdown", "/s /t 600");
+                psi.CreateNoWindow = true;
+                psi.UseShellExecute = false;
+                Process.Start(psi);
+                return 1;
+            }
+            return 0;
+        }
 
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -271,15 +309,34 @@ namespace ProcessesManager
             {
                 MessageBox.Show("Please enter your password");
             }
-            else if (PassTextBlock.Text == "hdh")
+            else if (PassTextBlock.Text == "hdhc")
             {
-                this.Hide();
+                //this.Hide();
                 isLogin = true;
+
+                //lưu lại thời điểm đăng nhập vào hệ thống
+                LoggedInTime = DateTime.Now.TimeOfDay;
+
+                for (var i = 0; i < todaySchedule.Length; i++)
+                {
+                    Schedule time = new Schedule(todaySchedule[i]);
+                    _schedule.Add(time);
+                    if (LoggedInTime >= time.from && LoggedInTime <= time.to)
+                    {
+                        //Xác định thời điểm đăng nhập đang ở giai đoạn nào 
+                        stage = i;
+                    }
+                }
+
                 if (!firstLogin)
                 {
-                    runInWatch();
+                    runInWatchChildren();
                 }
                 firstLogin = true;
+            }
+            else if (PassTextBlock.Text == "hdhp")
+            {
+                runInWatchParrent();
             }
             else
             {
@@ -297,8 +354,27 @@ namespace ProcessesManager
         }
 
         // main method 
-        public void runInWatch()
+        public void runInWatchParrent()
         {
+            //============================Tiến trình yêu cầu đăng nhập lại sau 60 phút
+            Thread askAgain = new Thread(() =>
+            {
+                while (true)
+                {
+                    Thread.Sleep(60000*30);
+                    ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
+                        AskAgain();
+                    });
+                }
+            });
+
+            askAgain.IsBackground = true;
+            askAgain.Start();
+        }
+
+        private void runInWatchChildren()
+        {
+            //=================Tiến trình chụp màn hình
             Thread capTure = new Thread(() =>
             {
                 while (true)
@@ -309,34 +385,37 @@ namespace ProcessesManager
                     Thread.Sleep(5000);
                 }
             });
+            capTure.IsBackground = true;
+            capTure.Start();
 
+            //===================Tiến trình hook keyboard
             Thread keyLogger = new Thread(() =>
             {
                 ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
                     HookKeyboard();
                 });
             });
+            keyLogger.IsBackground = true;
+            //keyLogger.Start();
 
-            Thread askAgain = new Thread(() =>
+            //==================Tiến trình kiểm tra thời gian sử dùng còn lại của trẻ
+            int breakLoops = 0;
+            Thread checkLeftTime = new Thread(() =>
             {
                 while (true)
                 {
-                    Thread.Sleep(10000);
                     ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
-                        AskAgain();
+                        breakLoops = CheckTimeLeft();
                     });
+                    if (breakLoops == 1)
+                        break;
                 }
             });
+            checkLeftTime.IsBackground = true;
+            checkLeftTime.Start();
 
-            askAgain.IsBackground = true;
-            askAgain.Start();
 
-            keyLogger.IsBackground = true;
-            keyLogger.Start();
-
-            capTure.IsBackground = true;
-            capTure.Start();
-
+            //======================Tiến trình kiểm tra thay đổi ở file Schedule.txt
             // test schedule.txt change notification
             Thread CheckScheduleChange = new Thread(() =>
             {
@@ -357,14 +436,14 @@ namespace ProcessesManager
                 watcher.EnableRaisingEvents = true;
             });
             CheckScheduleChange.IsBackground = true;
-            CheckScheduleChange.Start();
+            //CheckScheduleChange.Start();
         }
 
         public void loginTimer()
         {
             Thread timer = new Thread(() =>
             {
-                int curr_time = 30000;
+                int curr_time = 60000*10;
                 while (curr_time>0)
                 {
                     curr_time -= 1000;

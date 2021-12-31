@@ -11,5 +11,6 @@
         <TextBox Name="PassTextBlock"  Height="50" Width="200" Canvas.Left="300" Canvas.Top="167"/>
         <Label x:Name="noti" Content="enter password" Canvas.Left="300" Canvas.Top="121" FontWeight="Bold" FontSize="16"/>
         <Label x:Name="lb_timer" Content="timer" Canvas.Left="506" Canvas.Top="124" FontStyle="Italic" FontSize="14"/>
+        <Label x:Name="time_left" Content="timer" Canvas.Left="527" Canvas.Top="251" FontStyle="Italic" FontSize="14"/>
     </Canvas>
 </Window>
