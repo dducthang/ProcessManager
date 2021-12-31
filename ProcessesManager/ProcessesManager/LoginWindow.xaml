@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ProcessesManager"
         mc:Ignorable="d"
-        Title="LoginWindow" Height="450" Width="800">
+        Title="LoginWindow" Height="450" Width="800"
+        >
     <Canvas>
         <TextBox Name="PwTextBox" Width="200" Height="50" Canvas.Left="300" Canvas.Top="192"/>
-        <Button Name="Login" Content="Login" Height="40" Width="100" Canvas.Left="350" Canvas.Top="270" IsDefault="True"/>
+        <Button Name="Login" Content="Login" Height="40" Width="100" Canvas.Left="350" Canvas.Top="270" IsDefault="True" Click="Login_Click"/>
     </Canvas>
 </Window>

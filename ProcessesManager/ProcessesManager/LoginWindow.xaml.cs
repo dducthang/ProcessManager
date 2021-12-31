@@ -19,9 +19,15 @@ namespace ProcessesManager
     /// </summary>
     public partial class LoginWindow : Window
     {
+        public bool PassEntered{ get; set; }
         public LoginWindow()
         {
             InitializeComponent();
+        }
+
+        private void Login_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = true;
         }
     }
 }
