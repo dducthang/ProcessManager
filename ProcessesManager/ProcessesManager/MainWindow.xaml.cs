@@ -88,7 +88,7 @@ namespace ProcessesManager
     {
         private string[] defaultSchedule =
             {
-            "F07:30 T11:30 D60 I20 S150", "F12:30 T5:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
+            "F07:30 T11:30 D60 I20 S150", "F12:30 T17:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
         };
         private string[] todaySchedule;
         private string todayPath;
