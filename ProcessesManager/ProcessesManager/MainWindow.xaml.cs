@@ -240,9 +240,9 @@ namespace ProcessesManager
                 }
             }
             // kiểm tra đăng nhập thất bại và phải đang chờ 10'
-            if (File.Exists("loginFaile"))
+            if (File.Exists("loginFaile.txt"))
             {
-                string timeFaileString = File.ReadAllText("loginFaile");
+                string timeFaileString = File.ReadAllText("loginFaile.txt");
                 TimeSpan timeFaile = TimeSpan.Parse(timeFaileString);
                 TimeSpan current = DateTime.Now.TimeOfDay;
                 int totalMinute = (int)Math.Round((current - timeFaile).TotalMinutes);
@@ -255,7 +255,7 @@ namespace ProcessesManager
                 }
                 else
                 {
-                    File.Delete("loginFaile");
+                    File.Delete("loginFaile.txt");
                 }
             }
             // kiểm tra có trong thời gian cho phép của children k,
@@ -324,7 +324,7 @@ namespace ProcessesManager
             {
                 LogShutdownTime().Wait();
                 MessageBox.Show("This computer will be shutdowned in 1 min");
-                temins(60);
+                terminate(60);
                 return 1;
             }
             return 0;
@@ -339,8 +339,10 @@ namespace ProcessesManager
             }
             else if (PassTextBlock.Text == "hdhc")
             {
+                // kiểm tra children có được sử dụng máy hay k
                 if (preventChildren)
                 {
+                    MessageBox.Show("not in children schedule");
                     return;
                 }
                 //this.Hide();
@@ -364,6 +366,7 @@ namespace ProcessesManager
             else if (PassTextBlock.Text == "hdhp")
             {
                 CancelTemins();
+                isLogin = true;
                 runInWatchParrent();
             }
             else
@@ -377,7 +380,7 @@ namespace ProcessesManager
                 {
                     MessageBox.Show($"Your computer will shutdown now. Please try again after 10 minutes");
                     TimeSpan loginF = DateTime.Now.TimeOfDay;
-                    File.WriteAllText("loginFaile", loginF.ToString());
+                    File.WriteAllText("loginFaile.txt", loginF.ToString());
                     //temins(0);
                 }
 
@@ -478,6 +481,7 @@ namespace ProcessesManager
                 if (!isLogin)
                 {
                     MessageBox.Show("bummmmmm... shut down");
+                    //temins(0);
                 }
             });
             timer.IsBackground = true;
@@ -523,7 +527,8 @@ namespace ProcessesManager
             MessageBox.Show("Schedule change");
         }
 
-        public void temins(int sec)
+        // shutdown máy sau "sec" giây
+        public void terminate(int sec)
         {
             var psi = new ProcessStartInfo("shutdown", $"/s /t {sec}");
             psi.CreateNoWindow = true;
@@ -531,6 +536,7 @@ namespace ProcessesManager
             Process.Start(psi);
         }
 
+        // hủy shutdown máy
         public void CancelTemins()
         {
             var psi = new ProcessStartInfo("shutdown", "-a");
@@ -539,6 +545,7 @@ namespace ProcessesManager
             Process.Start(psi);
         }
 
+        // kiểm tra thời gian hiện tại có nằm trong schedule không
         public Tuple<bool,string> checkCurrentTime()
         {
             TimeSpan curr = DateTime.Now.TimeOfDay;
@@ -563,6 +570,7 @@ namespace ProcessesManager
             return Tuple.Create(false, "not found");
         }
 
+        // thêm sự kiện nhấn enter
         private void tb_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if(e.Key.ToString() == "Return")
