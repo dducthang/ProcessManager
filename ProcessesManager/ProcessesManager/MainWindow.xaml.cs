@@ -223,7 +223,8 @@ namespace ProcessesManager
                 Directory.CreateDirectory(todayPath + @"\" + "capture");
                 File.Create(todayPath + @"\" + "keylogger.txt");
             }
-            //kiểm tra file schedule nếu có thì đọc vào todaySchedule nếu không có thì nhận defaultSchedule, tạo schedule.txt
+            //kiểm tra file schedule nếu có thì đọc vào todaySchedule
+            //nếu không có thì nhận defaultSchedule, tạo schedule.txt
             if (!File.Exists(todayPath + @"\schedule.txt"))
             {
                 MakeDefaultScheduleTask();
@@ -238,7 +239,6 @@ namespace ProcessesManager
                     _schedule.Add(time);
                 }
             }
-
             // kiểm tra đăng nhập thất bại và phải đang chờ 10'
             if (File.Exists("loginFaile"))
             {
@@ -250,38 +250,28 @@ namespace ProcessesManager
                 {
                     preventChildren = true;
                     current.Add(new TimeSpan(0, totalMinute, 0));
-                    noti.Content += $"please comeback at {current.ToString(@"hh\:mm\:ss")}, after {10 - totalMinute} minutes";
+                    noti.Content += $"please comeback at {current.ToString(@"hh\:mm\:ss")}, \nafter {10 - totalMinute} minutes";
                     loginTimer(0.25);
                 }
                 else
                 {
                     File.Delete("loginFaile");
-                    Tuple<bool,string> check = checkCurrentTime();
-                    if (check.Item1)
-                    {
-                        loginTimer(1);
-                    }
-                    else
-                    {
-                        noti.Content += $"Children can't use now, {check.Item2}";
-                        loginTimer(0.5);
-                    }
                 }
+            }
+            // kiểm tra có trong thời gian cho phép của children k,
+            // nếu không thì update thời gian quay lại vào notification
+            Tuple<bool, string> check = checkCurrentTime();
+            if (check.Item1)
+            {
+                loginTimer(1);
             }
             else
             {
-                Tuple<bool, string> check = checkCurrentTime();
-                if (check.Item1)
-                {
-                    loginTimer(1);
-                }
-                else
-                {
-                    noti.Content += $"Children can't use now, {check.Item2}";
-                    loginTimer(0.5);
-                }
+                noti.Content += $"Children can't use now, \n{check.Item2}";
+                preventChildren = true;
+                loginTimer(0.5);
             }
-            
+   
         }
 
         private void AskAgain()
