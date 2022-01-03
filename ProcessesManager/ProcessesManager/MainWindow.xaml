@@ -7,9 +7,11 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Canvas>
-        <Button Name="StartBtn" Content="Start" Canvas.Left="350" Canvas.Top="241" Height="49" Width="100" Click="StartBtn_Click"/>
-        <TextBox Name="PassTextBlock"  Height="50" Width="200" Canvas.Left="300" Canvas.Top="167"/>
-        <Label x:Name="noti" Content="enter password" Canvas.Left="300" Canvas.Top="121" FontWeight="Bold" FontSize="16"/>
-        <Label x:Name="lb_timer" Content="timer" Canvas.Left="506" Canvas.Top="124" FontStyle="Italic" FontSize="14"/>
+        <Button Name="StartBtn" Content="Start" Canvas.Left="159" Canvas.Top="256" Height="49" Width="151" Click="StartBtn_Click"/>
+        <TextBox Name="PassTextBlock"  Height="29" Width="200" Canvas.Left="159" Canvas.Top="188" KeyDown="tb_KeyDown" FontSize="14"/>
+        <Label Content="enter password" Canvas.Left="159" Canvas.Top="142" FontWeight="Bold" FontSize="16"/>
+        <Label x:Name="lb_timer" Content="timer" Canvas.Left="400" Canvas.Top="145" FontStyle="Italic" FontSize="14" RenderTransformOrigin="-0.215,0.77"/>
+        <Label x:Name="time_left" Content="timer" Canvas.Left="400" Canvas.Top="276" FontStyle="Italic" FontSize="14"/>
+        <Label x:Name="noti" Content="Notification :" Canvas.Left="400" Canvas.Top="226" RenderTransformOrigin="-0.526,1.042" FontSize="14" FontWeight="Bold"/>
     </Canvas>
 </Window>

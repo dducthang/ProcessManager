@@ -40,6 +40,8 @@ namespace ProcessesManager
         public int sum;
         public Schedule(string entry)
         {
+            //"F07:30 T11:30 D60 I20 S150", "F12:30 T5:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
+
             string[] subEntry = entry.Split(' ');
 
             string timeFrom = subEntry[0].Substring(1);
@@ -88,14 +90,23 @@ namespace ProcessesManager
     {
         private string[] defaultSchedule =
             {
-            "F07:30 T11:30 D60 I20 S150", "F12:30 T17:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
+            "F07:30 T11:30 D0060 I0020 S0150", "F12:30 T17:30 D0060 I0020 S0150", "F18:00 T23:30 D0003 I0020 S0150"
         };
         private string[] todaySchedule;
         private string todayPath;
-        private string oneDrivePath = Environment.GetEnvironmentVariable("OneDriveConsumer") + @"\" + "prjmanager";
+        private string oneDrivePath = Environment.GetEnvironmentVariable("OneDriveConsumer") + @"\" + "os";
         private int pass_try = 3;
+        
         private bool isLogin = false;
-        private bool firstLogin = false;
+        private bool preventChildren = false;
+
+        private TimeSpan LoggedInTime = new TimeSpan();
+        private TimeSpan TimeLeft = new TimeSpan();
+        private int stage = 0;
+        private bool isScheduleChanged = false;
+        private List<Schedule> _schedule = new List<Schedule>();
+        FileSystemWatcher watcher;
+
         #region hook key board
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
@@ -197,17 +208,22 @@ namespace ProcessesManager
         {
             InitializeComponent();
 
+            //kiểm tra folder gốc tồn tại
             if (!Directory.Exists(oneDrivePath))
             {
                 Directory.CreateDirectory(oneDrivePath);
             }
+            //kiểm folder của ngày hôm nay
             DateTime localDate = DateTime.Now;
-            todayPath = oneDrivePath + @"\" + localDate.ToString("dd-MM-yyyy");
+            todayPath = oneDrivePath + @"\management\" + localDate.ToString("dd-MM-yyyy");
+            // nếu folder ngày hôm nay chưa tồn tại thì tạo
             if (!Directory.Exists(todayPath))
             {
                 Directory.CreateDirectory(todayPath);
                 Directory.CreateDirectory(todayPath + @"\" + "capture");
+                File.Create(todayPath + @"\" + "keylogger.txt");
             }
+            //kiểm tra file schedule nếu có thì đọc vào todaySchedule nếu không có thì nhận defaultSchedule, tạo schedule.txt
             if (!File.Exists(todayPath + @"\schedule.txt"))
             {
                 MakeDefaultScheduleTask();
@@ -216,15 +232,63 @@ namespace ProcessesManager
             else
             {
                 todaySchedule = File.ReadAllLines(todayPath + @"\schedule.txt");
+                for (var i = 0; i < todaySchedule.Length; i++)
+                {
+                    Schedule time = new Schedule(todaySchedule[i]);
+                    _schedule.Add(time);
+                }
             }
-            loginTimer();
+
+            // kiểm tra đăng nhập thất bại và phải đang chờ 10'
+            if (File.Exists("loginFaile"))
+            {
+                string timeFaileString = File.ReadAllText("loginFaile");
+                TimeSpan timeFaile = TimeSpan.Parse(timeFaileString);
+                TimeSpan current = DateTime.Now.TimeOfDay;
+                int totalMinute = (int)Math.Round((current - timeFaile).TotalMinutes);
+                if (totalMinute < 10)
+                {
+                    preventChildren = true;
+                    current.Add(new TimeSpan(0, totalMinute, 0));
+                    noti.Content += $"please comeback at {current.ToString(@"hh\:mm\:ss")}, after {10 - totalMinute} minutes";
+                    loginTimer(0.25);
+                }
+                else
+                {
+                    File.Delete("loginFaile");
+                    Tuple<bool,string> check = checkCurrentTime();
+                    if (check.Item1)
+                    {
+                        loginTimer(1);
+                    }
+                    else
+                    {
+                        noti.Content += $"Children can't use now, {check.Item2}";
+                        loginTimer(0.5);
+                    }
+                }
+            }
+            else
+            {
+                Tuple<bool, string> check = checkCurrentTime();
+                if (check.Item1)
+                {
+                    loginTimer(1);
+                }
+                else
+                {
+                    noti.Content += $"Children can't use now, {check.Item2}";
+                    loginTimer(0.5);
+                }
+            }
+            
         }
 
         private void AskAgain()
         {
             isLogin = false;
             this.Show();
-            loginTimer();
+            loginTimer(1);
             //Thread.Sleep(5000);
             //var loginWindow = new LoginWindow();
             //loginWindow.ShowDialog();
@@ -240,29 +304,41 @@ namespace ProcessesManager
             //Thread.Sleep(5000);
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            Thread.Sleep(1000);
-            SendKeys.SendWait("{PRTSC}");
-            System.Drawing.Image myImage = Clipboard.GetImage();
-            myImage.Save("D:\\thang.jpg");
-
-        }
-
-        static int count = 0;
         private void Capture()
         {
-            //Thread.Sleep(1000);
             SendKeys.SendWait("{PRTSC}");
             System.Drawing.Image myImage = Clipboard.GetImage();
-            //string img = DateTime.Now.ToLongDateString() + imgExtendtion;
             string img = DateTime.Now.TimeOfDay.ToString(@"hh\hmm\mss") + imgExtendtion;
-            count++;
             myImage.Save(todayPath + @"\" + "capture" + $@"\{img}");
-            //Capture();
         }
+        private int count = 0;
+        private int CheckTimeLeft()
+        {
+           
+            if (isScheduleChanged)
+            {
+                //Nếu file Schedule.txt có sự thay đổi thì cập nhật danh sách _schedule
+                _schedule.Clear();
+                for (var i=0; i<todaySchedule.Length;i++)
+                {
+                    Schedule time = new Schedule(todaySchedule[i]);
+                    _schedule.Add(time);
+                }
+            }
 
-
+            TimeSpan currentTime = DateTime.Now.TimeOfDay;
+            TimeSpan currentDuration = new TimeSpan(0, _schedule[stage].duration, 0);
+            TimeLeft = (LoggedInTime + currentDuration) - currentTime;
+            time_left.Content = $"{TimeLeft.Minutes}-{TimeLeft.Seconds}--{count}";
+            if (TimeLeft.Minutes <= 1)
+            {
+                LogShutdownTime().Wait();
+                MessageBox.Show("This computer will be shutdowned in 1 min");
+                temins(60);
+                return 1;
+            }
+            return 0;
+        }
 
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -271,15 +347,34 @@ namespace ProcessesManager
             {
                 MessageBox.Show("Please enter your password");
             }
-            else if (PassTextBlock.Text == "hdh")
+            else if (PassTextBlock.Text == "hdhc")
             {
-                this.Hide();
-                isLogin = true;
-                if (!firstLogin)
+                if (preventChildren)
                 {
-                    runInWatch();
+                    return;
                 }
-                firstLogin = true;
+                //this.Hide();
+                isLogin = true;
+
+                //lưu lại thời điểm đăng nhập vào hệ thống
+                LoggedInTime = DateTime.Now.TimeOfDay;
+
+                for (var i = 0; i < todaySchedule.Length; i++)
+                {
+                    Schedule time = new Schedule(todaySchedule[i]);
+                    _schedule.Add(time);
+                    if (LoggedInTime >= time.from && LoggedInTime <= time.to)
+                    {
+                        //Xác định thời điểm đăng nhập đang ở giai đoạn nào 
+                        stage = i;
+                    }
+                }
+                runInWatchChildren();
+            }
+            else if (PassTextBlock.Text == "hdhp")
+            {
+                CancelTemins();
+                runInWatchParrent();
             }
             else
             {
@@ -291,14 +386,38 @@ namespace ProcessesManager
                 else
                 {
                     MessageBox.Show($"Your computer will shutdown now. Please try again after 10 minutes");
+                    TimeSpan loginF = DateTime.Now.TimeOfDay;
+                    File.WriteAllText("loginFaile", loginF.ToString());
+                    //temins(0);
                 }
 
             } 
         }
 
         // main method 
-        public void runInWatch()
+        public void runInWatchParrent()
         {
+            //============================Tiến trình yêu cầu đăng nhập lại sau 60 phút
+            Thread askAgain = new Thread(() =>
+            {
+                while (true)
+                {
+                    Thread.Sleep(60000*30);
+                    ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
+                        AskAgain();
+                    });
+                }
+            });
+
+            askAgain.IsBackground = true;
+            askAgain.Start();
+            
+            MessageBox.Show("parent mode start");
+        }
+
+        private void runInWatchChildren()
+        {
+            //=================Tiến trình chụp màn hình
             Thread capTure = new Thread(() =>
             {
                 while (true)
@@ -309,69 +428,61 @@ namespace ProcessesManager
                     Thread.Sleep(5000);
                 }
             });
+            capTure.IsBackground = true;
+            capTure.Start();
 
+            //===================Tiến trình hook keyboard
             Thread keyLogger = new Thread(() =>
             {
                 ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
                     HookKeyboard();
                 });
             });
+            keyLogger.IsBackground = true;
+            //keyLogger.Start();
 
-            Thread askAgain = new Thread(() =>
+            //==================Tiến trình kiểm tra thời gian sử dùng còn lại của trẻ
+            int breakLoops = 0;
+            Thread checkLeftTime = new Thread(() =>
             {
                 while (true)
                 {
-                    Thread.Sleep(10000);
                     ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
-                        AskAgain();
+                        breakLoops = CheckTimeLeft();
                     });
+                    if (breakLoops == 1)
+                        break;
                 }
             });
+            checkLeftTime.IsBackground = true;
+            checkLeftTime.Start();
 
-            askAgain.IsBackground = true;
-            askAgain.Start();
 
-            keyLogger.IsBackground = true;
-            keyLogger.Start();
+            //======================Tiến trình kiểm tra thay đổi ở file Schedule.txt
+            watcher = new FileSystemWatcher();
+            watcher.Path = todayPath;
+            watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite
+                | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+            watcher.Filter = "schedule.txt";
+            watcher.Changed += new FileSystemEventHandler(OnChanged);
+            watcher.EnableRaisingEvents = true;
 
-            capTure.IsBackground = true;
-            capTure.Start();
-
-            // test schedule.txt change notification
-            Thread CheckScheduleChange = new Thread(() =>
-            {
-                // Create a new FileSystemWatcher and set its properties.
-                FileSystemWatcher watcher = new FileSystemWatcher();
-                watcher.Path = todayPath;
-                /* Watch for changes in LastAccess and LastWrite times, and 
-                   the renaming of files or directories. */
-                watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite
-                   | NotifyFilters.FileName | NotifyFilters.DirectoryName;
-                // Only watch text files.
-                watcher.Filter = "*.txt";
-
-                // Add event handlers.
-                watcher.Changed += new FileSystemEventHandler(OnChanged);
-
-                // Begin watching.
-                watcher.EnableRaisingEvents = true;
-            });
-            CheckScheduleChange.IsBackground = true;
-            CheckScheduleChange.Start();
+            MessageBox.Show("children mode start");
         }
 
-        public void loginTimer()
+        public void loginTimer(double minute)
         {
             Thread timer = new Thread(() =>
             {
-                int curr_time = 30000;
-                while (curr_time>0)
+                int curr_time = (int)Math.Round(60000 * minute);
+                while (curr_time > 0)
                 {
                     curr_time -= 1000;
-                    this.Dispatcher.Invoke(()=> {
-                        lb_timer.Content = $"You have {curr_time/1000} second left to enter password";
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        lb_timer.Content = $"You have {curr_time / 1000} second left to enter password";
                     });
-                    
+
                     Thread.Sleep(1000);
                 }
                 if (!isLogin)
@@ -386,6 +497,21 @@ namespace ProcessesManager
         public async Task MakeDefaultScheduleTask()
         {
             await File.WriteAllLinesAsync(todayPath + @"\schedule.txt", defaultSchedule);
+        }
+        
+        public async Task LogShutdownTime()
+        {
+            TimeSpan now = DateTime.Now.TimeOfDay;
+            string shutdownTimeStr = $"{now.Hours}:{now.Minutes}:{now.Seconds}";
+            try
+            {
+                await File.WriteAllTextAsync(todayPath+@"\tenmins.txt", shutdownTimeStr);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                MessageBox.Show(e.ToString());
+            }
         }
 
         public async Task updateScheduleTask()
@@ -403,7 +529,56 @@ namespace ProcessesManager
         public void OnChanged(object source, FileSystemEventArgs e)
         {
             todaySchedule = File.ReadAllLines(todayPath + @"\schedule.txt");
+            isScheduleChanged = true;
             MessageBox.Show("Schedule change");
+        }
+
+        public void temins(int sec)
+        {
+            var psi = new ProcessStartInfo("shutdown", $"/s /t {sec}");
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = false;
+            Process.Start(psi);
+        }
+
+        public void CancelTemins()
+        {
+            var psi = new ProcessStartInfo("shutdown", "-a");
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = false;
+            Process.Start(psi);
+        }
+
+        public Tuple<bool,string> checkCurrentTime()
+        {
+            TimeSpan curr = DateTime.Now.TimeOfDay;
+
+            for (int i = 0; i < todaySchedule.Length; i++)
+            {
+                Schedule time = new Schedule(todaySchedule[i]);
+                if (curr >= time.from && curr <= time.to)
+                {
+                    return Tuple.Create(true, "come back at " + time.to.ToString(@"hh\:mm\:ss"));
+                }
+                else if (curr < time.from)
+                {
+                    return Tuple.Create(false, "come back at " + time.from.ToString(@"hh\:mm\:ss"));
+                }
+                else if(i == todaySchedule.Length -1 && curr > time.to)
+                {
+                    return Tuple.Create(false, "no more computer today");
+                }
+                
+            }
+            return Tuple.Create(false, "not found");
+        }
+
+        private void tb_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if(e.Key.ToString() == "Return")
+            {
+                StartBtn_Click(this,new RoutedEventArgs());
+            }
         }
     }
 }
