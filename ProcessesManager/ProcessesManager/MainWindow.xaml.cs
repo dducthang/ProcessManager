@@ -271,6 +271,7 @@ namespace ProcessesManager
             string img = DateTime.Now.TimeOfDay.ToString(@"hh\hmm\mss") + imgExtendtion;
             myImage.Save(todayPath + @"\" + "capture" + $@"\{img}");
         }
+
         private int count = 0;
         private int CheckTimeLeft()
         {
