@@ -1,7 +1,7 @@
 - checkfile khung giờ và thời gian đc mở lại:
 	+ chưa tới thời gian mở lại: hiện thông báo thời gian mở lại, và thông báo máy tắt sau 5 giây
-	+ trong khung giờ ko đc sử dụng: mở form đăng nhập(tích hợp mở 1 thread tắt máy nếu 1 phút ko đăng nhập) -> thông báo chưa đc sử dụng
-		. không phải pass người lớn: shutdown sau 15s; đăng nhập sai 3 lần -> shutdown
+	+ trong khung giờ ko đc sử dụng: mở form đăng nhập(tích hợp mở 1 thread tắt máy nếu 15s ko đăng nhập) -> thông báo chưa đc sử dụng
+		. không phải pass người lớn: đăng nhập sai 3 lần -> shutdown
 		. pass người lớn: mở 1 thread check đăng nhập sau mỗi 60p
 	+ trong giờ đc sử dụng: mở form đăng nhập(tích hợp mở 1 thread tắt máy nếu 1 phút ko đăng nhập):
 		. đăng nhập sai 3 lần -> shutdown, ghi thời gian shutdown vào file tenmins.txt
