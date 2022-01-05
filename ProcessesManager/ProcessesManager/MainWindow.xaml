@@ -6,11 +6,45 @@
         xmlns:local="clr-namespace:ProcessesManager"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Canvas>
-        <Button Name="StartBtn" Content="Start" Canvas.Left="350" Canvas.Top="241" Height="49" Width="100" Click="StartBtn_Click"/>
-        <TextBox Name="PassTextBlock"  Height="50" Width="200" Canvas.Left="300" Canvas.Top="167"/>
-        <Label x:Name="noti" Content="enter password" Canvas.Left="300" Canvas.Top="121" FontWeight="Bold" FontSize="16"/>
-        <Label x:Name="lb_timer" Content="timer" Canvas.Left="506" Canvas.Top="124" FontStyle="Italic" FontSize="14"/>
-        <Label x:Name="time_left" Content="timer" Canvas.Left="527" Canvas.Top="251" FontStyle="Italic" FontSize="14"/>
+    <Canvas x:Name="canvas" Background="#D3DEDC">
+        <Label Content="CHIDREN USING COMPUTER MANAGER" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+               Background="#92A9BD" Foreground="white" FontWeight="Bold" FontSize="20" RenderTransformOrigin="1.49,-2.059" Width="800" Height="72"/>
+        <Grid Height="362" Canvas.Top="72" Width="800">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Label Name="LogInLabel" 
+                   Content="LOG IN" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                   FontWeight="Bold" FontSize="16" Margin="0,71,0,71" Grid.RowSpan="3"/>
+            <PasswordBox Name="PassTextBlock" Grid.Row="2" KeyDown="tb_KeyDown" FontSize="14" Margin="59,21,75,21"/>
+            <Button Name="StartBtn" Grid.Row="3" 
+                    Background="#7C99AC" Foreground="WhiteSmoke" Content="Start" Canvas.Left="350" Canvas.Top="260" Click="StartBtn_Click" Margin="164,21,164,21"/>
+            <Label x:Name="TimerLabel" HorizontalContentAlignment="Center"
+                   Grid.Column="1" 
+                   Background="#F2FFE9"
+                   Content="SECONDS LEFT TO ENTER PASSWORD:" FontStyle="Italic" FontSize="14"/>
+            <Label x:Name="lb_timer" Grid.Column="1" HorizontalContentAlignment="Center"
+                   VerticalContentAlignment="Center"
+                   Content="timer" FontWeight="Bold" FontSize="14" RenderTransformOrigin="-0.215,0.77"/>
+            <Label x:Name="time_left" Background="#F2FFE9"
+                   Grid.Column="1" Grid.Row="4"
+                   Content="timer" FontStyle="Italic" FontSize="14"/>
+            <Label Grid.Column="1" Grid.Row="3" Background="#F2FFE9"></Label>
+            <Label x:Name="noti" Grid.Column="1" Grid.RowSpan="3" 
+                   Background="#F2FFE9" Foreground="#FF1700"
+                   FontSize="20" FontWeight="Bold"
+                   HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,71,0,0"
+                   />
+        </Grid>
+
+
     </Canvas>
 </Window>
