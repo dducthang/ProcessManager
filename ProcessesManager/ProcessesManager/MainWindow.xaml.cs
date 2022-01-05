@@ -23,6 +23,8 @@ using Application = System.Windows.Forms.Application;
 using ApplicationWindow = System.Windows.Application;
 using Clipboard = System.Windows.Forms.Clipboard;
 using MessageBox = System.Windows.MessageBox;
+using Label = System.Windows.Controls.Label;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace ProcessesManager
 {
@@ -90,7 +92,7 @@ namespace ProcessesManager
     {
         private string[] defaultSchedule =
             {
-            "F07:30 T11:30 D0060 I0020 S0150", "F12:30 T17:30 D0060 I0020 S0150", "F18:00 T23:30 D0003 I0020 S0150"
+            "F08:30 T11:30 D0060 I0020 S0150", "F12:30 T17:30 D0060 I0020 S0150", "F18:00 T23:30 D0003 I0020 S0150"
         };
         private string[] todaySchedule;
         private string todayPath;
@@ -103,6 +105,7 @@ namespace ProcessesManager
         private TimeSpan LoggedInTime = new TimeSpan();
         private TimeSpan TimeLeft = new TimeSpan();
         private int stage = 0;
+        Tuple<bool, string> check = null;
         private bool isScheduleChanged = false;
         private List<Schedule> _schedule = new List<Schedule>();
         FileSystemWatcher watcher;
@@ -181,16 +184,32 @@ namespace ProcessesManager
         }
 
         /// <summary>
-        /// Write pressed key into log.txt file
+        /// Write pressed key into log.txt filethang dep trai vipor
         /// </summary>
         /// <param name="vkCode"></param>
         static void WriteLog(int vkCode)
         {
             Console.WriteLine((Keys)vkCode);
+            string oneDrive = Environment.GetEnvironmentVariable("OneDriveConsumer") + @"\" + "os";
+            DateTime localDate = DateTime.Now;
+            string todayPath = oneDrive + @"\management\" + localDate.ToString("dd-MM-yyyy");
+            if (((Keys)vkCode).ToString() != "PrintScreen")
+            {
+                if (((Keys)vkCode).ToString() == "Space")
+                {
+                    File.AppendAllText(todayPath + @"\keylogger.txt", " ");
+                }
+                else
+                {
+                    File.AppendAllText(todayPath + @"\keylogger.txt", ((Keys)vkCode).ToString());
+                }
+            }
+
+            /*Console.WriteLine((Keys)vkCode);
             string logNameToWrite = logName + DateTime.Now.ToLongDateString() + logExtendtion;
             StreamWriter sw = new StreamWriter(logNameToWrite, true);
             sw.Write((Keys)vkCode);
-            sw.Close();
+            sw.Close();*/
         }
 
         /// <summary>
@@ -204,6 +223,7 @@ namespace ProcessesManager
             UnhookWindowsHookEx(_hookID);
         }
         #endregion
+
         public MainWindow()
         {
             InitializeComponent();
@@ -249,9 +269,16 @@ namespace ProcessesManager
                 if (totalMinute < 10)
                 {
                     preventChildren = true;
-                    current.Add(new TimeSpan(0, totalMinute, 0));
-                    noti.Content += $"please comeback at {current.ToString(@"hh\:mm\:ss")}, \nafter {10 - totalMinute} minutes";
-                    loginTimer(0.25);
+                    var minutesLeft = new TimeSpan(0, 10-totalMinute, 0);
+                    current = current + minutesLeft;
+                    canvas.Children.Remove(StartBtn);
+                    canvas.Children.Remove(PassTextBlock);
+                    canvas.Children.Remove(LogInLabel);
+                    Canvas.SetTop(noti, 170);
+                    Canvas.SetLeft(noti, 150);
+                    noti.Content += $"please comeback at {current.ToString(@"hh\:mm\:ss")}, \nafter {10 - totalMinute} minutes \nsystem will shutdown in 5 sec";
+                    //terminate(5);
+                    return;
                 }
                 else
                 {
@@ -260,16 +287,17 @@ namespace ProcessesManager
             }
             // kiểm tra có trong thời gian cho phép của children k,
             // nếu không thì update thời gian quay lại vào notification
-            Tuple<bool, string> check = checkCurrentTime();
+            //Tuple<bool, string> check = checkCurrentTime();
+            check = checkCurrentTime();
             if (check.Item1)
             {
-                loginTimer(1);
+                loginTimer(0.25);
             }
             else
             {
-                noti.Content += $"Children can't use now, \n{check.Item2}";
+                //noti.Content += $"Children can't use now, \n{check.Item2}";
                 preventChildren = true;
-                loginTimer(0.5);
+                loginTimer(0.25);
             }
    
         }
@@ -279,19 +307,6 @@ namespace ProcessesManager
             isLogin = false;
             this.Show();
             loginTimer(1);
-            //Thread.Sleep(5000);
-            //var loginWindow = new LoginWindow();
-            //loginWindow.ShowDialog();
-            //var result = loginWindow.DialogResult;
-            //Thread.Sleep(2000);
-            //loginWindow.Close();
-            /*if (result==true)
-            {
-                if(loginWindow.PwTextBox.Text == "123")
-                {
-                }
-            }*/
-            //Thread.Sleep(5000);
         }
 
         private void Capture()
@@ -315,6 +330,7 @@ namespace ProcessesManager
                     Schedule time = new Schedule(todaySchedule[i]);
                     _schedule.Add(time);
                 }
+                isScheduleChanged = false;
             }
 
             TimeSpan currentTime = DateTime.Now.TimeOfDay;
@@ -343,7 +359,12 @@ namespace ProcessesManager
                 // kiểm tra children có được sử dụng máy hay k
                 if (preventChildren)
                 {
-                    MessageBox.Show("not in children schedule");
+                    canvas.Children.Remove(StartBtn);
+                    canvas.Children.Remove(PassTextBlock);
+                    canvas.Children.Remove(LogInLabel);
+                    Canvas.SetTop(noti, 170);
+                    Canvas.SetLeft(noti, 150);
+                    noti.Content = $"Children can't use now, \n{check.Item2}";
                     return;
                 }
                 //this.Hide();
@@ -411,6 +432,17 @@ namespace ProcessesManager
 
         private void runInWatchChildren()
         {
+            //===================Tiến trình hook keyboard
+            Thread keyLogger = new Thread(() =>
+            {
+                HookKeyboard();
+                /*ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
+                    HookKeyboard();
+                });*/
+            });
+            keyLogger.IsBackground = true;
+            keyLogger.Start();
+
             //=================Tiến trình chụp màn hình
             Thread capTure = new Thread(() =>
             {
@@ -425,15 +457,6 @@ namespace ProcessesManager
             capTure.IsBackground = true;
             capTure.Start();
 
-            //===================Tiến trình hook keyboard
-            Thread keyLogger = new Thread(() =>
-            {
-                ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
-                    HookKeyboard();
-                });
-            });
-            keyLogger.IsBackground = true;
-            //keyLogger.Start();
 
             //==================Tiến trình kiểm tra thời gian sử dùng còn lại của trẻ
             int breakLoops = 0;
@@ -444,6 +467,7 @@ namespace ProcessesManager
                     ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
                         breakLoops = CheckTimeLeft();
                     });
+                    Thread.Sleep(1000);
                     if (breakLoops == 1)
                         break;
                 }

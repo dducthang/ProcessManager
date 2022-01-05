@@ -6,13 +6,17 @@
         xmlns:local="clr-namespace:ProcessesManager"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Canvas>
-        <Button Name="StartBtn" Content="Start" Canvas.Left="159" Canvas.Top="256" Height="49" Width="151" Click="StartBtn_Click"/>
-        <TextBox Name="PassTextBlock"  Height="29" Width="200" Canvas.Left="159" Canvas.Top="188" KeyDown="tb_KeyDown" FontSize="14"/>
-        <Label Content="enter password" Canvas.Left="159" Canvas.Top="142" FontWeight="Bold" FontSize="16"/>
-        <Label x:Name="lb_timer" Content="timer" Canvas.Left="400" Canvas.Top="145" FontStyle="Italic" FontSize="14" RenderTransformOrigin="-0.215,0.77"/>
-        <Label x:Name="time_left" Content="timer" Canvas.Left="400" Canvas.Top="276" FontStyle="Italic" FontSize="14"/>
-        <Label x:Name="noti" Content="Notification :" Canvas.Left="400" Canvas.Top="188" RenderTransformOrigin="-0.526,1.042" FontSize="14" FontWeight="Bold" Width="400" Height="72"
+    <Canvas x:Name="canvas" Background="#D3DEDC">
+        <Label Content="CHIDREN USING COMPUTER MANAGER" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+               Background="#92A9BD" Foreground="white" FontWeight="Bold" FontSize="20" RenderTransformOrigin="1.49,-2.059" Width="800" Height="72"/>
+        <Button Name="StartBtn" Background="#7C99AC" Foreground="WhiteSmoke" Content="Start" Canvas.Left="350" Canvas.Top="260" Height="30" Width="100" Click="StartBtn_Click"/>
+        <TextBox Name="PassTextBlock"  Height="29" Width="200" Canvas.Left="300" Canvas.Top="217" KeyDown="tb_KeyDown" FontSize="14"/>
+        <Label Name="LogInLabel" Content="LOG IN" Canvas.Left="368" Canvas.Top="181" FontWeight="Bold" FontSize="16"/>
+        <Label x:Name="lb_timer" Content="timer" Canvas.Left="39" Canvas.Top="106" FontStyle="Italic" FontSize="14" RenderTransformOrigin="-0.215,0.77"/>
+        <Label x:Name="time_left" Content="timer" Canvas.Left="39" Canvas.Top="367" FontStyle="Italic" FontSize="14"/>
+        <Label x:Name="noti" Content="" Canvas.Left="170" Canvas.Top="313" RenderTransformOrigin="-0.526,1.042" 
+               FontSize="20" FontWeight="Bold" Foreground="White" Width="486" Height="111" 
+               HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                MaxWidth="300"/>
     </Canvas>
 </Window>
