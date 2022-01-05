@@ -110,6 +110,9 @@ namespace ProcessesManager
         private List<Schedule> _schedule = new List<Schedule>();
         FileSystemWatcher watcher;
 
+        //=============================================================================
+       // private int curr_time = 0;
+
         #region hook key board
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
@@ -306,7 +309,7 @@ namespace ProcessesManager
         {
             isLogin = false;
             this.Show();
-            loginTimer(1);
+            loginTimer(0.3);
         }
 
         private void Capture()
@@ -340,8 +343,8 @@ namespace ProcessesManager
             if (TimeLeft.Minutes <= 1)
             {
                 LogShutdownTime().Wait();
-                MessageBox.Show("This computer will be shutdowned in 1 min");
                 terminate(60);
+                MessageBox.Show("This computer will be shutdowned in 1 min");
                 return 1;
             }
             return 0;
@@ -350,24 +353,26 @@ namespace ProcessesManager
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
 
-            if (PassTextBlock.Text == "")
+            if (PassTextBlock.Password=="")
             {
                 MessageBox.Show("Please enter your password");
             }
-            else if (PassTextBlock.Text == "hdhc")
+            else if (PassTextBlock.Password == "hdhc")
             {
                 // kiểm tra children có được sử dụng máy hay k
                 if (preventChildren)
                 {
-                    canvas.Children.Remove(StartBtn);
+                    TimerLabel.Content = "System will be shutdowned in:";
+                    /*canvas.Children.Remove(StartBtn);
                     canvas.Children.Remove(PassTextBlock);
                     canvas.Children.Remove(LogInLabel);
                     Canvas.SetTop(noti, 170);
-                    Canvas.SetLeft(noti, 150);
-                    noti.Content = $"Children can't use now, \n{check.Item2}";
+                    Canvas.SetLeft(noti, 240);*/
+                    noti.Content = $"Children can't use now\n{check.Item2}";
+                    
                     return;
                 }
-                //this.Hide();
+                this.Hide();
                 isLogin = true;
 
                 //lưu lại thời điểm đăng nhập vào hệ thống
@@ -385,10 +390,11 @@ namespace ProcessesManager
                 }
                 runInWatchChildren();
             }
-            else if (PassTextBlock.Text == "hdhp")
+            else if (PassTextBlock.Password == "hdhp")
             {
                 CancelTemins();
                 isLogin = true;
+                this.Hide();
                 runInWatchParrent();
             }
             else
@@ -417,7 +423,7 @@ namespace ProcessesManager
             {
                 while (true)
                 {
-                    Thread.Sleep(60000*30);
+                    Thread.Sleep(60000);
                     ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
                         AskAgain();
                     });
@@ -488,6 +494,7 @@ namespace ProcessesManager
             MessageBox.Show("children mode start");
         }
 
+        
         public void loginTimer(double minute)
         {
             Thread timer = new Thread(() =>
@@ -498,7 +505,7 @@ namespace ProcessesManager
                     curr_time -= 1000;
                     this.Dispatcher.Invoke(() =>
                     {
-                        lb_timer.Content = $"You have {curr_time / 1000} second left to enter password";
+                        lb_timer.Content = $"{curr_time / 1000} ";
                     });
 
                     Thread.Sleep(1000);
@@ -524,7 +531,7 @@ namespace ProcessesManager
             string shutdownTimeStr = $"{now.Hours}:{now.Minutes}:{now.Seconds}";
             try
             {
-                await File.WriteAllTextAsync(todayPath+@"\interruptTime.txt", shutdownTimeStr);
+                await File.WriteAllTextAsync(todayPath+ @"\shutdownTime.txt", shutdownTimeStr);
             }
             catch (Exception e)
             {
@@ -547,9 +554,19 @@ namespace ProcessesManager
 
         public void OnChanged(object source, FileSystemEventArgs e)
         {
-            todaySchedule = File.ReadAllLines(todayPath + @"\schedule.txt");
-            isScheduleChanged = true;
-            MessageBox.Show("Schedule change");
+            while (true) { 
+                try
+                {
+                    todaySchedule = File.ReadAllLines(todayPath + @"\schedule.txt");
+                    isScheduleChanged = true;
+                    //MessageBox.Show("Schedule change");
+                }
+                catch (IOException)
+                {
+                    
+                }
+            }
+           
         }
 
         // shutdown máy sau "sec" giây
@@ -574,20 +591,21 @@ namespace ProcessesManager
         public Tuple<bool,string> checkCurrentTime()
         {
             TimeSpan curr = DateTime.Now.TimeOfDay;
-            TimeSpan nextAccessTime = new TimeSpan(24,0,0);
+            TimeSpan nextAccessTime = new TimeSpan(0,0,0);
 
             for (int i = 0; i < todaySchedule.Length; i++)
             {
                 Schedule time = new Schedule(todaySchedule[i]);
                 if (curr >= time.from && curr <= time.to)
                 {
-                    if(File.Exists(todayPath + @"\interruptTime.txt"))
+                    //Nếu tồn tại file shutdown (ghi lại thời điểm máy shutdown gần nhất) thì tính thời gian hiện tại cộng với intterupt time xem đã đủ để mở lại chưa
+                    if(File.Exists(todayPath + @"\shutdownTime.txt"))
                     {
-                        string shutdownTimeStr= File.ReadAllText(todayPath+@"\interruptTime.txt");
+                        string shutdownTimeStr= File.ReadAllText(todayPath+ @"\shutdownTime.txt");
                         string[] timeParts = shutdownTimeStr.Split(':');
                         TimeSpan shutdownTime = new TimeSpan(Int32.Parse(timeParts[0]), Int32.Parse(timeParts[1]), Int32.Parse(timeParts[2]));
-                        TimeSpan duration = new TimeSpan(0, time.duration, 0);
-                        nextAccessTime = shutdownTime + duration;
+                        TimeSpan interruptTime = new TimeSpan(0, time.interupt, 0);
+                        nextAccessTime = shutdownTime + interruptTime;
                     }
                     if (nextAccessTime <= curr)
                     {
