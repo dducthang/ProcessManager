@@ -524,7 +524,7 @@ namespace ProcessesManager
             string shutdownTimeStr = $"{now.Hours}:{now.Minutes}:{now.Seconds}";
             try
             {
-                await File.WriteAllTextAsync(todayPath+@"\tenmins.txt", shutdownTimeStr);
+                await File.WriteAllTextAsync(todayPath+@"\interruptTime.txt", shutdownTimeStr);
             }
             catch (Exception e)
             {
@@ -574,13 +574,26 @@ namespace ProcessesManager
         public Tuple<bool,string> checkCurrentTime()
         {
             TimeSpan curr = DateTime.Now.TimeOfDay;
+            TimeSpan nextAccessTime = new TimeSpan(24,0,0);
 
             for (int i = 0; i < todaySchedule.Length; i++)
             {
                 Schedule time = new Schedule(todaySchedule[i]);
                 if (curr >= time.from && curr <= time.to)
                 {
-                    return Tuple.Create(true, "come back at " + time.to.ToString(@"hh\:mm\:ss"));
+                    if(File.Exists(todayPath + @"\interruptTime.txt"))
+                    {
+                        string shutdownTimeStr= File.ReadAllText(todayPath+@"\interruptTime.txt");
+                        string[] timeParts = shutdownTimeStr.Split(':');
+                        TimeSpan shutdownTime = new TimeSpan(Int32.Parse(timeParts[0]), Int32.Parse(timeParts[1]), Int32.Parse(timeParts[2]));
+                        TimeSpan duration = new TimeSpan(0, time.duration, 0);
+                        nextAccessTime = shutdownTime + duration;
+                    }
+                    if (nextAccessTime <= curr)
+                    {
+                        return Tuple.Create(true, "come back at " + time.to.ToString(@"hh\:mm\:ss"));
+                    }
+                    return Tuple.Create(false, "come back at " + nextAccessTime.ToString(@"hh\:mm\:ss"));
                 }
                 else if (curr < time.from)
                 {
