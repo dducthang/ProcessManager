@@ -110,6 +110,9 @@ namespace ProcessesManager
         private List<Schedule> _schedule = new List<Schedule>();
         FileSystemWatcher watcher;
 
+        private string childPW;
+        private string parentPW;
+
         //=============================================================================
        // private int curr_time = 0;
 
@@ -262,6 +265,14 @@ namespace ProcessesManager
                     _schedule.Add(time);
                 }
             }
+            if (File.Exists(oneDrivePath + @"\child-password.txt"))
+            {
+                childPW = File.ReadAllText(oneDrivePath + @"\child-password.txt");
+            }
+            if (File.Exists(oneDrivePath + @"\parent-password.txt"))
+            {
+                parentPW = File.ReadAllText(oneDrivePath + @"\parent-password.txt");
+            }
             // kiểm tra đăng nhập thất bại và phải đang chờ 10'
             if (File.Exists("loginFaile.txt"))
             {
@@ -357,7 +368,7 @@ namespace ProcessesManager
             {
                 MessageBox.Show("Please enter your password");
             }
-            else if (PassTextBlock.Password == "hdhc")
+            else if (PassTextBlock.Password == childPW)
             {
                 // kiểm tra children có được sử dụng máy hay k
                 if (preventChildren)
@@ -372,7 +383,7 @@ namespace ProcessesManager
                     
                     return;
                 }
-                this.Hide();
+                //this.Hide();
                 isLogin = true;
 
                 //lưu lại thời điểm đăng nhập vào hệ thống
@@ -390,11 +401,11 @@ namespace ProcessesManager
                 }
                 runInWatchChildren();
             }
-            else if (PassTextBlock.Password == "hdhp")
+            else if (PassTextBlock.Password == parentPW)
             {
                 CancelTemins();
                 isLogin = true;
-                this.Hide();
+                //this.Hide();
                 runInWatchParrent();
             }
             else
