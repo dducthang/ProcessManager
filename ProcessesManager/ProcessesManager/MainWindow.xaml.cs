@@ -40,6 +40,8 @@ namespace ProcessesManager
         public int duration;
         public int interupt;
         public int sum;
+
+        //truyền vào 1 chuỗi có thông tin của khung thời gian ta sẽ tách xuất được thời điểm bắt đầu, kết thúc, duration, interrupt time của khung thời gian
         public Schedule(string entry)
         {
             //"F07:30 T11:30 D60 I20 S150", "F12:30 T5:30 D60 I20 S150", "F19:30 T23:30 D60 I20 S150"
@@ -68,12 +70,14 @@ namespace ProcessesManager
             }
         }
 
+        //Tách xuất thời điểm bắt đầu của khung giờ
         public void setFrom(string from_string)
         {
             string[] timeEntry = from_string.Split(':');
             from = new TimeSpan(Int32.Parse(timeEntry[0]), Int32.Parse(timeEntry[1]), 0);
         }
 
+        //Tách xuất thời điểm kết thúc của khung giờ
         public void setTo(string to_string)
         {
             string[] timeEntry = to_string.Split(':');
@@ -92,7 +96,7 @@ namespace ProcessesManager
     {
         private string[] defaultSchedule =
             {
-            "F08:30 T11:30 D0060 I0020 S0150", "F12:30 T17:30 D0060 I0020 S0150", "F18:00 T23:30 D0003 I0020 S0150"
+            "F08:30 T11:30 D0060 I0020 S0150", "F12:30 T17:30 D0060 I0020 S0150", "F19:00 T23:30 D0003 I0020 S0150"
         };
         private string[] todaySchedule;
         private string todayPath;
@@ -246,8 +250,18 @@ namespace ProcessesManager
             if (!Directory.Exists(todayPath))
             {
                 Directory.CreateDirectory(todayPath);
-                Directory.CreateDirectory(todayPath + @"\" + "capture");
-                File.Create(todayPath + @"\" + "keylogger.txt");
+                if (!Directory.Exists(todayPath+@"\"+"flag"))
+                {
+                    Directory.CreateDirectory(todayPath+@"\"+"flag");
+                }
+                if (!Directory.Exists(todayPath+@"\"+"capture"))
+                {
+                    Directory.CreateDirectory(todayPath+@"\"+"capture");
+                }
+                if(!File.Exists(todayPath + @"\" + "keylogger.txt")){
+
+                    File.Create(todayPath + @"\" + "keylogger.txt");
+                }
             }
             //kiểm tra file schedule nếu có thì đọc vào todaySchedule
             //nếu không có thì nhận defaultSchedule, tạo schedule.txt
@@ -265,14 +279,30 @@ namespace ProcessesManager
                     _schedule.Add(time);
                 }
             }
+            //tọa folder flag bên ngoài
+            if (!Directory.Exists(oneDrivePath + @"\"+"flag"))
+            {
+                Directory.CreateDirectory(oneDrivePath + @"\" + "flag");
+            }
+
+            //tạo file default-schedule.txt
+            if (!File.Exists(oneDrivePath + @"\default-schedule.txt"))
+            {
+                File.WriteAllLines(oneDrivePath + @"\default-schedule.txt", defaultSchedule);
+            }
+
+            //tạo file child-password.txt
             if (File.Exists(oneDrivePath + @"\child-password.txt"))
             {
                 childPW = File.ReadAllText(oneDrivePath + @"\child-password.txt");
             }
+
+            //tạo file parent-password.txt
             if (File.Exists(oneDrivePath + @"\parent-password.txt"))
             {
                 parentPW = File.ReadAllText(oneDrivePath + @"\parent-password.txt");
             }
+
             // kiểm tra đăng nhập thất bại và phải đang chờ 10'
             if (File.Exists("loginFaile.txt"))
             {
@@ -290,8 +320,11 @@ namespace ProcessesManager
                     canvas.Children.Remove(LogInLabel);
                     Canvas.SetTop(noti, 170);
                     Canvas.SetLeft(noti, 150);
+
+                    //xuất ra thông báo thời điểm có thể đăng nhập lại hệ thống
                     noti.Content += $"please comeback at {current.ToString(@"hh\:mm\:ss")}, \nafter {10 - totalMinute} minutes \nsystem will shutdown in 5 sec";
-                    //terminate(5);
+
+                    loginTimer(0.1);
                     return;
                 }
                 else
@@ -301,17 +334,16 @@ namespace ProcessesManager
             }
             // kiểm tra có trong thời gian cho phép của children k,
             // nếu không thì update thời gian quay lại vào notification
-            //Tuple<bool, string> check = checkCurrentTime();
+            
             check = checkCurrentTime();
             if (check.Item1)
             {
-                loginTimer(0.25);
+                loginTimer(0.15);
             }
             else
             {
-                //noti.Content += $"Children can't use now, \n{check.Item2}";
                 preventChildren = true;
-                loginTimer(0.25);
+                loginTimer(0.15);
             }
    
         }
@@ -320,9 +352,10 @@ namespace ProcessesManager
         {
             isLogin = false;
             this.Show();
-            loginTimer(0.3);
+            PassTextBlock.Password = "";
+            loginTimer(0.2);
         }
-
+        
         private void Capture()
         {
             SendKeys.SendWait("{PRTSC}");
@@ -374,11 +407,6 @@ namespace ProcessesManager
                 if (preventChildren)
                 {
                     TimerLabel.Content = "System will be shutdowned in:";
-                    /*canvas.Children.Remove(StartBtn);
-                    canvas.Children.Remove(PassTextBlock);
-                    canvas.Children.Remove(LogInLabel);
-                    Canvas.SetTop(noti, 170);
-                    Canvas.SetLeft(noti, 240);*/
                     noti.Content = $"Children can't use now\n{check.Item2}";
                     
                     return;
@@ -405,7 +433,7 @@ namespace ProcessesManager
             {
                 CancelTemins();
                 isLogin = true;
-                //this.Hide();
+                this.Hide();
                 runInWatchParrent();
             }
             else
@@ -420,7 +448,7 @@ namespace ProcessesManager
                     MessageBox.Show($"Your computer will shutdown now. Please try again after 10 minutes");
                     TimeSpan loginF = DateTime.Now.TimeOfDay;
                     File.WriteAllText("loginFaile.txt", loginF.ToString());
-                    //temins(0);
+                    terminate(0);
                 }
 
             } 
@@ -434,7 +462,7 @@ namespace ProcessesManager
             {
                 while (true)
                 {
-                    Thread.Sleep(60000);
+                    Thread.Sleep(15000);
                     ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
                         AskAgain();
                     });
@@ -453,9 +481,6 @@ namespace ProcessesManager
             Thread keyLogger = new Thread(() =>
             {
                 HookKeyboard();
-                /*ApplicationWindow.Current.Dispatcher.Invoke((Action)delegate {
-                    HookKeyboard();
-                });*/
             });
             keyLogger.IsBackground = true;
             keyLogger.Start();
@@ -502,7 +527,15 @@ namespace ProcessesManager
             watcher.Changed += new FileSystemEventHandler(OnChanged);
             watcher.EnableRaisingEvents = true;
 
-            MessageBox.Show("children mode start");
+            TimeSpan currentTime = DateTime.Now.TimeOfDay;
+            TimeSpan left = _schedule[stage].to - currentTime;
+
+            if (stage == 2)
+            {
+                MessageBox.Show($"children mode start\nTime left: {left.ToString()}");
+            }
+            else
+                MessageBox.Show($"children mode start\nTime left: {left.ToString()}\nNext access time: {_schedule[stage+1].from}");
         }
 
         
